@@ -14,8 +14,9 @@
 <title>Mina aktier</title>
 <style>
   html, body { margin: 0; height: 100%; background: #0a0f1f; overflow: hidden; font-family: -apple-system, Inter, sans-serif; }
-  #app { position: fixed; top: env(safe-area-inset-top); left: 0; width: 100%; height: calc(100% - env(safe-area-inset-top));
+  #app { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
          border: 0; background: #0a0f1f; opacity: 0; transition: opacity .4s ease; }
+  #matt { position: fixed; top: 0; height: env(safe-area-inset-top); width: 1px; visibility: hidden; pointer-events: none; }
   #app.klar { opacity: 1; }
   #lasar { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
            gap: 14px; color: #f0efec; font-weight: 650; letter-spacing: .02em; transition: opacity .4s ease; }
@@ -33,6 +34,7 @@
 </head>
 <body>
 <div id="lasar"><img src="ikon-192.png" alt=""><div>Mina aktier</div></div>
+<div id="matt"></div>
 <iframe id="app" title="Mina aktier" allow="clipboard-write"></iframe>
 <button id="notis" hidden>🔔 Slå på notiser<span class="stang" id="stang">✕</span></button>
 <script>
@@ -51,6 +53,19 @@ function ladda(nySida, extra) {
   if (nyckel) q.set("nyckel", nyckel);
   ram.src = APP_ADRESS + "/" + sida + "?" + q.toString();
 }
+// Fyll hela skärmen. Telefonen räknar ibland med statusfältet och ibland inte – därför mäts det här.
+function anpassa() {
+  const hojd = window.innerHeight;
+  const fullskarm = Math.abs(hojd - screen.height) < 4 || Math.abs(hojd - screen.width) < 4;
+  const topp = fullskarm ? document.getElementById("matt").offsetHeight : 0;
+  ram.style.top = topp + "px";
+  ram.style.height = (hojd - topp) + "px";
+}
+anpassa();
+window.addEventListener("resize", anpassa);
+window.addEventListener("orientationchange", () => setTimeout(anpassa, 300));
+document.addEventListener("visibilitychange", anpassa);
+
 ram.addEventListener("load", () => {
   setTimeout(() => { ram.classList.add("klar"); document.getElementById("lasar").classList.add("borta"); }, 600);
 });
