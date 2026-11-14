@@ -36,7 +36,8 @@
 <iframe id="app" title="Mina aktier" allow="clipboard-write"></iframe>
 <button id="notis" hidden>🔔 Slå på notiser<span class="stang" id="stang">✕</span></button>
 <script>
-const APP = "https://mina-aktier.streamlit.app";
+const APP = "https://mina-aktier.streamlit.app";      // avsändaren av meddelanden från appen
+const APP_ADRESS = APP + "/~/+";                       // själva appen, utan Streamlit Clouds ram och sidfot
 const VAPID = "BHUbCCGCcJfW26_u2VwnnnoX2vP3w4Lfr8r6b0prgg-VQM0kK9cyp8Uj-a8kkAsPcKEBgrtXHs_klmIGVE-VslM";
 const ram = document.getElementById("app");
 const knapp = document.getElementById("notis");
@@ -48,7 +49,7 @@ function ladda(nySida, extra) {
   const q = new URLSearchParams(Object.assign({ embed: "true" }, extra || {}));
   const nyckel = localStorage.getItem("nyckel");
   if (nyckel) q.set("nyckel", nyckel);
-  ram.src = APP + "/" + sida + "?" + q.toString();
+  ram.src = APP_ADRESS + "/" + sida + "?" + q.toString();
 }
 ram.addEventListener("load", () => {
   setTimeout(() => { ram.classList.add("klar"); document.getElementById("lasar").classList.add("borta"); }, 600);
