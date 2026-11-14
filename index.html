@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mina aktier">
+<meta name="theme-color" content="#0a0f1f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="ikon-180.png">
+<link rel="icon" href="ikon-192.png">
+<title>Mina aktier</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0f1f; overflow: hidden; font-family: -apple-system, Inter, sans-serif; }
+  #app { position: fixed; top: env(safe-area-inset-top); left: 0; width: 100%; height: calc(100% - env(safe-area-inset-top));
+         border: 0; background: #0a0f1f; opacity: 0; transition: opacity .4s ease; }
+  #app.klar { opacity: 1; }
+  #lasar { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 14px; color: #f0efec; font-weight: 650; letter-spacing: .02em; transition: opacity .4s ease; }
+  #lasar img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 40px rgba(57,135,229,.35);
+               animation: puls 1.6s ease-in-out infinite; }
+  #lasar.borta { opacity: 0; pointer-events: none; }
+  @keyframes puls { 50% { transform: scale(1.06); } }
+  #notis { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom));
+           padding: 12px 20px; border-radius: 99px; border: 1px solid rgba(255,255,255,.18); color: #fff; font-size: 15px;
+           font-weight: 600; background: linear-gradient(135deg, rgba(57,135,229,.85), rgba(47,191,113,.85));
+           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  #notis[hidden] { display: none; }
+  #notis .stang { margin-left: 10px; opacity: .7; }
+</style>
+</head>
+<body>
+<div id="lasar"><img src="ikon-192.png" alt=""><div>Mina aktier</div></div>
+<iframe id="app" title="Mina aktier" allow="clipboard-write"></iframe>
+<button id="notis" hidden>🔔 Slå på notiser<span class="stang" id="stang">✕</span></button>
+<script>
+const APP = "https://mina-aktier.streamlit.app";
+const VAPID = "BHUbCCGCcJfW26_u2VwnnnoX2vP3w4Lfr8r6b0prgg-VQM0kK9cyp8Uj-a8kkAsPcKEBgrtXHs_klmIGVE-VslM";
+const ram = document.getElementById("app");
+const knapp = document.getElementById("notis");
+let sida = (new URLSearchParams(location.search).get("sida") || "").replace(/[^a-z0-9-]/g, "");
+history.replaceState(null, "", location.pathname);
+
+function ladda(nySida, extra) {
+  sida = (nySida || "").replace(/[^a-z0-9-]/g, "");
+  const q = new URLSearchParams(Object.assign({ embed: "true" }, extra || {}));
+  const nyckel = localStorage.getItem("nyckel");
+  if (nyckel) q.set("nyckel", nyckel);
+  ram.src = APP + "/" + sida + "?" + q.toString();
+}
+ram.addEventListener("load", () => {
+  setTimeout(() => { ram.classList.add("klar"); document.getElementById("lasar").classList.add("borta"); }, 600);
+});
+ladda(sida);
+
+// Meddelanden från appen: kom ihåg mig, logga ut, notiser sparade
+window.addEventListener("message", (e) => {
+  if (e.origin !== APP || !e.data || typeof e.data !== "object") return;
+  if (e.data.typ === "kom-ihag" && e.data.nyckel) localStorage.setItem("nyckel", e.data.nyckel);
+  if (e.data.typ === "glom") localStorage.removeItem("nyckel");
+  if (e.data.typ === "push-sparad") { localStorage.setItem("push", e.data.endpoint || "1"); visaKnapp(); }
+});
+
+const fristående = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+const kanNotiser = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+async function visaKnapp() {
+  if (!kanNotiser() || !fristående() || Notification.permission === "denied" || localStorage.getItem("push_nej")) {
+    knapp.hidden = true; return;
+  }
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  knapp.hidden = !!(sub && Notification.permission === "granted" && localStorage.getItem("push") === sub.endpoint);
+}
+
+function nyckelBytes(b64) {
+  const s = atob((b64 + "=".repeat((4 - b64.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+}
+
+knapp.addEventListener("click", async (e) => {
+  if (e.target.id === "stang") { localStorage.setItem("push_nej", "1"); knapp.hidden = true; return; }
+  const svar = await Notification.requestPermission();
+  if (svar !== "granted") { knapp.hidden = true; return; }
+  knapp.textContent = "Sparar ...";
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: nyckelBytes(VAPID) });
+  const j = sub.toJSON();
+  const kod = btoa(JSON.stringify({ endpoint: j.endpoint, keys: j.keys }))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  ladda(sida, { push: kod });
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(visaKnapp).catch(() => {});
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data && e.data.typ === "oppna") ladda(e.data.sida);
+  });
+}
+</script>
+</body>
+</html>
