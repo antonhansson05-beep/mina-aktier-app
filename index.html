@@ -51,23 +51,22 @@ function ladda(nySida, extra) {
   const q = new URLSearchParams(Object.assign({ embed: "true" }, extra || {}));
   const nyckel = localStorage.getItem("nyckel");
   if (nyckel) q.set("nyckel", nyckel);
+  if (statusfalt) q.set("topp", String(Math.round(statusfalt)));
   ram.src = APP_ADRESS + "/" + sida + "?" + q.toString();
 }
-// Fyll hela skärmen. I hemskärmsappar rapporterar iPhone ibland en för låg höjd (ungefär statusfältets höjd för
-// lite), så där används skärmens fysiska höjd.
+// Fyll hela skärmen, även bakom klockan. I hemskärmsappar rapporterar iPhone ibland en för låg höjd, så där används
+// skärmens fysiska höjd. Statusfältets höjd skickas till appen (?topp=), som flyttar ner menyknappen och innehållet.
+let statusfalt = 0;
 function anpassa() {
   const fri = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
   const staende = window.innerHeight >= window.innerWidth;
   const skarm = staende ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
   const hojd = fri ? Math.max(window.innerHeight, skarm) : window.innerHeight;
-  // Börja under klockan/statusfältet, så att menyknappen går att trycka på
-  // Statusfältets höjd: telefonens eget mått, eller skillnaden mellan skärmen och den rapporterade höjden.
-  // Minst 44 punkter på en iPhone med Dynamic Island/notch i stående läge.
   const matt = document.getElementById("matt").offsetHeight;
   const skillnad = Math.max(0, skarm - window.innerHeight);
-  const topp = fri && staende ? Math.max(matt, skillnad, skarm >= 812 ? 44 : 20) : (fri ? matt : 0);
-  ram.style.top = topp + "px";
-  ram.style.height = (hojd - topp) + "px";
+  statusfalt = fri && staende ? Math.max(matt, skillnad, skarm >= 812 ? 44 : 20) : (fri ? matt : 0);
+  ram.style.top = "0px";
+  ram.style.height = hojd + "px";
   document.body.style.height = hojd + "px";
 }
 anpassa();
