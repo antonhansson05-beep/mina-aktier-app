@@ -1,7 +1,13 @@
+// version 2
 // Tar emot notiser och öppnar appen på rätt sida när du trycker på dem.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", () => {});
+// Hämta alltid senaste versionen av själva appskalet (annars kan telefonen visa en gammal i upp till 10 minuter)
+self.addEventListener("fetch", (e) => {
+  if (e.request.mode === "navigate") {
+    e.respondWith(fetch(e.request, { cache: "no-store" }).catch(() => fetch(e.request)));
+  }
+});
 
 self.addEventListener("push", (e) => {
   let d = {};
