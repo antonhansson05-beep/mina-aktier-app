@@ -61,7 +61,11 @@ function anpassa() {
   const skarm = staende ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
   const hojd = fri ? Math.max(window.innerHeight, skarm) : window.innerHeight;
   // Börja under klockan/statusfältet, så att menyknappen går att trycka på
-  const topp = fri ? document.getElementById("matt").offsetHeight : 0;
+  // Statusfältets höjd: telefonens eget mått, eller skillnaden mellan skärmen och den rapporterade höjden.
+  // Minst 44 punkter på en iPhone med Dynamic Island/notch i stående läge.
+  const matt = document.getElementById("matt").offsetHeight;
+  const skillnad = Math.max(0, skarm - window.innerHeight);
+  const topp = fri && staende ? Math.max(matt, skillnad, skarm >= 812 ? 44 : 20) : (fri ? matt : 0);
   ram.style.top = topp + "px";
   ram.style.height = (hojd - topp) + "px";
   document.body.style.height = hojd + "px";
